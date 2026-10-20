@@ -17,6 +17,8 @@
   .pop { animation: pop .35s ease-out both; }
   @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
   .bump { animation: bump .2s ease-out; }
+  @keyframes toastIn { 0% { transform: translateY(-10px) scale(.9); opacity: 0; } 12% { transform: none; opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px); } }
+  .toast { animation: toastIn 2.2s ease-out forwards; }
 </style>
 </head>
 <body class="bg-black text-white">
@@ -40,19 +42,25 @@
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="3" y="2" width="3.5" height="12" rx="1"/><rect x="9.5" y="2" width="3.5" height="12" rx="1"/></svg>
       </button>
     </div>
+    <div id="hudCombo" class="hidden text-xs sm:text-sm font-black tracking-widest text-fuchsia-300 neon-text"></div>
     <div class="w-36 sm:w-48 text-right">
+      <div class="text-[10px] sm:text-xs tracking-[0.3em] text-fuchsia-300/80">LEVEL <span id="hudLevel" class="text-white font-bold">1</span></div>
       <div class="text-[10px] sm:text-xs tracking-[0.3em] text-cyan-300/80">SPEED <span id="hudSpeed" class="text-white font-bold">50</span> <span class="opacity-60">KM/H</span></div>
       <div class="mt-1 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
         <div id="speedBar" class="h-full rounded-full bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-red-500" style="width:0%"></div>
       </div>
     </div>
+    <div id="powerBar" class="flex gap-2 justify-end"></div>
   </div>
 </div>
 
+<div id="missions" class="hidden fixed left-3 bottom-3 sm:left-6 sm:bottom-6 z-10 pointer-events-none w-[46vw] sm:w-72 space-y-1.5"></div>
+<div id="toasts" class="fixed top-28 sm:top-32 inset-x-0 z-10 pointer-events-none flex flex-col items-center gap-2"></div>
+
 <!-- START SCREEN -->
-<div id="startScreen" class="fixed inset-0 z-20 flex items-center justify-center text-center px-4 bg-gradient-to-b from-black/60 via-fuchsia-950/30 to-black/70 backdrop-blur-[2px] cursor-pointer">
-  <div class="max-w-md w-full pop">
-    <p class="text-cyan-300 tracking-[0.5em] text-[10px] sm:text-sm neon-text">3D ENDLESS RUNNER</p>
+<div id="startScreen" class="fixed inset-0 z-20 flex justify-center text-center px-4 py-4 overflow-y-auto bg-gradient-to-b from-black/60 via-fuchsia-950/30 to-black/70 backdrop-blur-[2px] cursor-pointer">
+  <div class="max-w-md w-full pop my-auto">
+    <p class="text-cyan-300 tracking-[0.5em] text-[10px] sm:text-sm neon-text">3D ENDLESS RUNNER &middot; NO SPEED LIMIT</p>
     <h1 class="mt-3 text-6xl sm:text-8xl font-black italic leading-[0.9]">
       <span class="text-fuchsia-400 neon-text">NEON</span><br><span class="text-cyan-300 neon-text">RUNNER</span>
     </h1>
@@ -64,8 +72,18 @@
       <div class="rounded-xl bg-white/5 border border-white/10 p-2 sm:p-3"><div class="mb-1"><span class="kbd">SPACE</span></div>Jump<div class="text-white/40 mt-1">swipe up</div></div>
       <div class="rounded-xl bg-white/5 border border-white/10 p-2 sm:p-3"><div class="mb-1"><span class="kbd">S</span></div>Roll / duck<div class="text-white/40 mt-1">swipe down</div></div>
     </div>
-    <p class="mt-4 text-[10px] text-white/40 tracking-widest"><span class="kbd">P</span> PAUSE &nbsp; <span class="kbd">M</span> MUTE</p>
-    <p class="mt-5 text-sm tracking-[0.3em] text-fuchsia-300">HIGH SCORE <span id="startBest" class="text-white font-black">0</span></p>
+    <p class="mt-4 text-[10px] text-white/40 tracking-widest"><span class="kbd">P</span> PAUSE &nbsp; <span class="kbd">M</span> MUTE &nbsp; <span class="kbd">1</span>-<span class="kbd">4</span> POWER-UPS</p>
+    <div class="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] text-white/70">
+      <span><b style="color:#ff3b3b">M</b> magnet</span><span><b style="color:#00e5ff">S</b> shield</span><span><b style="color:#c77dff">x2</b> double score</span><span><b style="color:#ff8a00">J</b> jetpack</span>
+    </div>
+    <p class="mt-2 text-[10px] text-white/50 tracking-widest">COMPLETE MISSIONS &middot; CHAIN COINS FOR UP TO x5</p>
+    <div class="nostart mt-4 flex items-center justify-center gap-3 flex-wrap">
+      <button class="shopBtn bg-yellow-300 text-black font-black text-xs tracking-widest px-5 py-2 rounded-full shadow-[0_0_18px_rgba(250,204,21,.5)] hover:scale-105 active:scale-95 transition">SHOP</button>
+      <label class="text-[10px] tracking-widest text-cyan-300/90 flex items-center gap-2">SPEED LIMIT
+        <select class="capSel bg-black/60 border border-cyan-300/50 rounded-md text-white text-xs px-2 py-1"></select></label>
+    </div>
+    <p class="mt-4 text-sm tracking-[0.3em] text-fuchsia-300">HIGH SCORE <span id="startBest" class="text-white font-black">0</span></p>
+    <p class="mt-1 text-[11px] tracking-[0.2em] text-yellow-300/80">BANKED <span id="startBank" class="text-white font-black">0</span> COINS &middot; <span id="startMis" class="text-white font-black">0</span> MISSIONS DONE</p>
   </div>
 </div>
 
@@ -74,12 +92,47 @@
   <div class="pop">
     <h2 class="text-5xl font-black text-cyan-300 neon-text italic">PAUSED</h2>
     <button id="resumeBtn" class="mt-6 bg-cyan-400 text-black font-black tracking-widest px-10 py-3 rounded-full shadow-[0_0_25px_rgba(34,211,238,.7)] hover:scale-105 active:scale-95 transition">RESUME</button>
+    <div class="nostart mt-5 flex items-center justify-center gap-3 flex-wrap">
+      <button class="shopBtn bg-yellow-300 text-black font-black text-xs tracking-widest px-5 py-2 rounded-full shadow-[0_0_18px_rgba(250,204,21,.5)] hover:scale-105 active:scale-95 transition">SHOP</button>
+      <label class="text-[10px] tracking-widest text-cyan-300/90 flex items-center gap-2">SPEED LIMIT
+        <select class="capSel bg-black/60 border border-cyan-300/50 rounded-md text-white text-xs px-2 py-1"></select></label>
+    </div>
   </div>
 </div>
 
+<!-- REVIVE -->
+<div id="reviveScreen" class="hidden fixed inset-0 z-[25] flex items-center justify-center bg-black/55 px-4">
+  <div class="pop nostart w-full max-w-xs text-center rounded-3xl border border-pink-400/60 bg-[#12062b]/95 p-6 shadow-[0_0_50px_rgba(255,92,138,.35)]">
+    <h2 class="text-4xl font-black italic text-pink-400 neon-text">REVIVE?</h2>
+    <p id="reviveInfo" class="mt-1 text-[11px] tracking-widest text-white/60"></p>
+    <div class="mt-4 h-1.5 rounded-full bg-white/15 overflow-hidden"><div id="reviveBar" class="h-full bg-pink-400" style="width:100%"></div></div>
+    <button id="reviveTokenBtn" class="mt-5 w-full bg-gradient-to-r from-pink-500 to-orange-400 text-black font-black text-sm tracking-widest py-3 rounded-full hover:scale-[1.03] active:scale-95 transition"></button>
+    <button id="revivePayBtn" class="mt-2 w-full bg-yellow-300 text-black font-black text-sm tracking-widest py-3 rounded-full hover:scale-[1.03] active:scale-95 transition"></button>
+    <button id="reviveNoBtn" class="mt-3 w-full text-white/60 text-xs tracking-widest py-2 hover:text-white">NO THANKS</button>
+  </div>
+</div>
+
+<!-- SHOP -->
+<div id="shopScreen" class="hidden fixed inset-0 z-[40] flex items-center justify-center bg-black/75 backdrop-blur-sm px-3">
+  <div class="pop nostart w-full max-w-md max-h-[92vh] overflow-y-auto rounded-3xl border border-yellow-300/50 bg-gradient-to-b from-[#1b0b3a] to-[#0b0618] p-5 shadow-[0_0_60px_rgba(250,204,21,.25)]">
+    <div class="flex items-center justify-between">
+      <h2 class="text-3xl font-black italic text-yellow-300 neon-text">SHOP</h2>
+      <div class="flex items-center gap-2 bg-black/40 border border-yellow-300/40 rounded-full px-4 py-1.5">
+        <span class="inline-block w-4 h-4 rounded-full bg-yellow-300 shadow-[0_0_10px_#facc15]"></span>
+        <span id="shopBank" class="text-xl font-black text-yellow-300">0</span>
+      </div>
+    </div>
+    <p class="mt-2 text-[11px] text-white/50 tracking-wide">Power-ups are used during a run with keys <b>1-4</b> or the buttons at the bottom right.</p>
+    <div id="shopList" class="mt-4 space-y-2"></div>
+    <button id="shopClose" class="mt-5 w-full bg-white/10 border border-white/20 font-black text-sm tracking-widest py-3 rounded-full hover:bg-white/20 active:scale-95 transition">CLOSE</button>
+  </div>
+</div>
+
+<div id="hotbar" class="hidden fixed right-3 bottom-3 sm:right-6 sm:bottom-6 z-10 flex gap-1.5 sm:gap-2"></div>
+
 <!-- GAME OVER -->
 <div id="overScreen" class="hidden fixed inset-0 z-20 flex items-center justify-center bg-black/65 backdrop-blur-sm px-4">
-  <div class="pop w-full max-w-sm text-center rounded-3xl border border-fuchsia-500/60 bg-gradient-to-b from-[#1b0b3a]/95 to-[#0b0618]/95 p-6 sm:p-8 shadow-[0_0_60px_rgba(217,70,239,.35)]">
+  <div class="pop w-full max-w-sm max-h-[92vh] overflow-y-auto text-center rounded-3xl border border-fuchsia-500/60 bg-gradient-to-b from-[#1b0b3a]/95 to-[#0b0618]/95 p-6 sm:p-8 shadow-[0_0_60px_rgba(217,70,239,.35)]">
     <h2 class="text-4xl sm:text-5xl font-black italic text-red-400 neon-text">CRASHED!</h2>
     <div id="newBest" class="hidden mt-2 inline-block text-[11px] tracking-[0.3em] font-black bg-yellow-300 text-black px-3 py-1 rounded-full animate-pulse">NEW HIGH SCORE</div>
     <div class="mt-5 text-[11px] tracking-[0.35em] text-cyan-300/80">FINAL SCORE</div>
@@ -89,8 +142,14 @@
       <div class="rounded-xl bg-white/5 border border-white/10 py-2"><div class="text-[9px] tracking-widest text-cyan-300/80">DISTANCE</div><div class="text-xl font-black"><span id="goDist">0</span><span class="text-xs opacity-60">m</span></div></div>
       <div class="rounded-xl bg-white/5 border border-white/10 py-2"><div class="text-[9px] tracking-widest text-fuchsia-300/80">BEST</div><div id="goBest" class="text-xl font-black text-fuchsia-300">0</div></div>
     </div>
+    <p class="mt-4 text-[11px] tracking-widest text-yellow-300/80">+<span id="goBank">0</span> COINS BANKED</p>
     <button id="againBtn" class="mt-7 w-full bg-gradient-to-r from-fuchsia-500 to-cyan-400 text-black font-black text-lg tracking-widest py-3.5 rounded-full shadow-[0_0_30px_rgba(255,46,147,.6)] hover:scale-[1.03] active:scale-95 transition">PLAY AGAIN</button>
     <p class="mt-3 text-[10px] text-white/40 tracking-widest">OR PRESS SPACE / ENTER</p>
+    <div class="nostart mt-4 flex items-center justify-center gap-3 flex-wrap">
+      <button class="shopBtn bg-yellow-300 text-black font-black text-xs tracking-widest px-5 py-2 rounded-full shadow-[0_0_18px_rgba(250,204,21,.5)] hover:scale-105 active:scale-95 transition">SHOP</button>
+      <label class="text-[10px] tracking-widest text-cyan-300/90 flex items-center gap-2">SPEED LIMIT
+        <select class="capSel bg-black/60 border border-cyan-300/50 rounded-md text-white text-xs px-2 py-1"></select></label>
+    </div>
   </div>
 </div>
 
@@ -102,8 +161,8 @@
    CONFIG
 ============================================================ */
 const LANES = [-2.2, 0, 2.2];
-const BASE_SPEED = 14, MAX_SPEED = 44, ACCEL = 0.32;
-const SPAWN_Z = 150;
+const BASE_SPEED = 14, ACCEL = 0.4;   // no max speed: it keeps climbing forever
+const spawnZ = () => clamp(speed * 2.4, 150, 340);   // spawn further out as speed grows
 const GRAVITY = 30, JUMP_V = 10.2;
 const ROLL_DUR = 0.7;
 const PW = 0.3;                       // player half width / depth
@@ -227,7 +286,7 @@ function makeWindowTex(hue) {
   return t;
 }
 const winBase = [0, 1, 2, 3].map(makeWindowTex);
-const BUILD_RANGE = 300;
+const BUILD_RANGE = 420;
 const buildings = [];
 const unitBox = new THREE.BoxGeometry(1, 1, 1);
 const unitEdges = new THREE.EdgesGeometry(unitBox);
@@ -238,11 +297,11 @@ function placeBuilding(b, z) {
   b.position.set(b.userData.side * (7.5 + w / 2 + rand(0, 7)), h / 2 - 0.5, z);
   b.material.map.repeat.set(Math.max(1, Math.round(w / 3)), Math.max(1, Math.round(h / 6)));
 }
-for (let i = 0; i < 44; i++) {
+for (let i = 0; i < 60; i++) {
   const t = winBase[i % 4].clone(); t.needsUpdate = true;
   const b = new THREE.Mesh(unitBox, new THREE.MeshBasicMaterial({ map: t }));
   b.userData.side = i % 2 ? 1 : -1;
-  placeBuilding(b, 30 - (i / 2) * (BUILD_RANGE / 22) - rand(0, 6));
+  placeBuilding(b, 30 - (i / 2) * (BUILD_RANGE / 30) - rand(0, 6));
   scene.add(b); buildings.push(b);
 }
 
@@ -287,6 +346,8 @@ function limb(x, y, w, h, mat, shoe) {
 const legL = limb(-0.14, -0.2, 0.2, 0.65, pantsM, true), legR = limb(0.14, -0.2, 0.2, 0.65, pantsM, true);
 const armL = limb(-0.37, 0.4, 0.15, 0.5, hoodieM, false), armR = limb(0.37, 0.4, 0.15, 0.5, hoodieM, false);
 const glow = new THREE.PointLight(0x00e5ff, 0.9, 14); glow.position.set(0, 2, 2); runner.add(glow);
+const shieldMesh = new THREE.Mesh(new THREE.SphereGeometry(1.15, 16, 12), new THREE.MeshBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.22, depthWrite: false }));
+shieldMesh.position.y = 0.9; shieldMesh.visible = false; runner.add(shieldMesh);
 
 /* ============================================================
    OBSTACLES / COINS
@@ -317,6 +378,7 @@ const barrierMat = new THREE.MeshStandardMaterial({ map: stripeTex, emissive: 0x
 
 const obstacles = [];
 const coins = [];
+const pickups = [];
 
 function addObstacle(kind, lane, zFront, trainLen) {
   const g = new THREE.Group();
@@ -346,9 +408,12 @@ function addObstacle(kind, lane, zFront, trainLen) {
 
 const coinGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.07, 18); coinGeo.rotateX(Math.PI / 2);
 const coinMat = new THREE.MeshStandardMaterial({ color: 0xffd400, emissive: 0x8a6400, metalness: 0.6, roughness: 0.3 });
+const gemGeo = new THREE.OctahedronGeometry(0.42);
+const gemMat = new THREE.MeshStandardMaterial({ color: 0xc77dff, emissive: 0x6a2bd6, metalness: 0.4, roughness: 0.2 });
 function addCoin(x, y, z) {
-  const m = new THREE.Mesh(coinGeo, coinMat); m.position.set(x, y, z); m.rotation.y = rand(0, 6); scene.add(m);
-  coins.push({ m, x, y });
+  const gem = Math.random() < 0.06;                 // gems are worth 5 coins
+  const m = new THREE.Mesh(gem ? gemGeo : coinGeo, gem ? gemMat : coinMat); m.position.set(x, y, z); m.rotation.y = rand(0, 6); scene.add(m);
+  coins.push({ m, x, y, val: gem ? 5 : 1 });
 }
 function coinLine(lane, zFront, n, spacing) {
   for (let i = 0; i < n; i++) addCoin(LANES[lane], 0.8, zFront - 0.6 - i * spacing);
@@ -361,24 +426,65 @@ function coinArc(lane, zCenter, n, spacing) {
     addCoin(LANES[lane], 1.1 + (1 - t * t) * 0.6, zCenter - (i - half) * spacing);
   }
 }
+const POWER = {
+  magnet: { label: 'M',  color: '#ff3b3b', hex: 0xff3b3b, dur: 9,  name: 'MAGNET' },
+  shield: { label: 'S',  color: '#00e5ff', hex: 0x00e5ff, dur: 0,  name: 'SHIELD' },
+  double: { label: 'x2', color: '#c77dff', hex: 0xc77dff, dur: 12, name: 'DOUBLE SCORE' },
+  jet:    { label: 'J',  color: '#ff8a00', hex: 0xff8a00, dur: 6,  name: 'JETPACK' }
+};
+const labelTex = {};
+function powerLabel(type) {
+  if (labelTex[type]) return labelTex[type];
+  const p = POWER[type], c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = 'rgba(12,6,32,0.85)'; g.beginPath(); g.arc(64, 64, 56, 0, 7); g.fill();
+  g.lineWidth = 8; g.strokeStyle = p.color; g.shadowColor = p.color; g.shadowBlur = 14; g.stroke();
+  g.shadowBlur = 0; g.fillStyle = '#ffffff'; g.font = 'bold 56px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(p.label, 64, 68);
+  labelTex[type] = new THREE.CanvasTexture(c);
+  return labelTex[type];
+}
+const ringGeo = new THREE.TorusGeometry(0.62, 0.06, 8, 28);
+function addPickup(type, x, y, z) {
+  const g = new THREE.Group();
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: powerLabel(type), transparent: true }));
+  sp.scale.set(0.95, 0.95, 1); g.add(sp);
+  g.add(new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: POWER[type].hex })));
+  g.position.set(x, y, z); scene.add(g);
+  pickups.push({ g, type, x, y, ph: Math.random() * 6 });
+}
+function pickPower() {
+  const r = Math.random();
+  return r < 0.3 ? 'magnet' : r < 0.6 ? 'shield' : r < 0.85 ? 'double' : 'jet';
+}
 const randomKind = () => { const r = Math.random(); return r < 0.4 ? 'train' : r < 0.75 ? 'barrier' : 'arch'; };
 
 // Spawn a pattern whose nearest edge is at zFront. Returns its length.
 function spawnEventAt(z) {
-  const diff = clamp((speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED), 0, 1);
+  const diff = clamp((speed - BASE_SPEED) / 30, 0, 1);
   const r = Math.random();
   let L = 10;
+  if (Math.random() < 0.16) {                        // power-up riding a coin line
+    const pl = rint(3); L = coinLine(pl, z, 8, 1.6);
+    addPickup(pickPower(), LANES[pl], 1.3, z - 0.6 - 3 * 1.6);
+    return L;
+  }
   if (r < 0.14) {                                    // coin line
-    L = coinLine(rint(3), z, 8, 1.6);
+    if (Math.random() < 0.5) L = coinLine(rint(3), z, 8, 1.6);
+    else {                                           // weaving coin snake
+      let ln = rint(3);
+      for (let i = 0; i < 14; i++) { if (i && i % 3 === 0) ln = clamp(ln + pick([-1, 1]), 0, 2); addCoin(LANES[ln], 0.8, z - 0.6 - i * 1.4); }
+      L = 14 * 1.4;
+    }
   } else if (r < 0.36) {                             // one obstacle + coins beside
     const lane = rint(3), d = addObstacle(randomKind(), lane, z, rand(6, 10));
     coinLine(pick([0, 1, 2].filter(l => l !== lane)), z, 6, 1.6);
-    L = Math.max(d, 9.6);
+    L = Math.max(d, 7);
   } else if (r < 0.58) {                             // two lanes blocked
     const free = rint(3); let maxd = 0;
     for (let l = 0; l < 3; l++) if (l !== free) maxd = Math.max(maxd, addObstacle(randomKind(), l, z, rand(6, 9)));
     coinLine(free, z, 6, 1.6);
-    L = Math.max(maxd, 9.6);
+    L = Math.max(maxd, 7);
   } else if (r < 0.70) {                             // wall of barriers (jump) + coin arc
     for (let l = 0; l < 3; l++) addObstacle('barrier', l, z);
     coinArc(rint(3), z - 0.35, 5, 1.0);
@@ -403,7 +509,7 @@ function spawnEventAt(z) {
   }
   return L;
 }
-const eventGap = () => 10 + speed * 0.5 + rand(0, 8);
+const eventGap = () => 4 + speed * 0.3 + rand(0, 4);
 
 /* ============================================================
    PARTICLES
@@ -445,6 +551,8 @@ const sfx = {
   jump: () => tone(300, 640, 0.16, 'triangle', 0.12),
   lane: () => tone(420, 300, 0.07, 'sine', 0.07),
   roll: () => tone(320, 110, 0.22, 'sawtooth', 0.06),
+  power: () => { tone(500, 1000, 0.16, 'triangle', 0.1); tone(900, 1500, 0.22, 'square', 0.04); },
+  shieldHit: () => tone(260, 60, 0.3, 'sawtooth', 0.12),
   crash: () => { tone(220, 30, 0.6, 'sawtooth', 0.22); tone(90, 25, 0.5, 'square', 0.15); }
 };
 
@@ -459,16 +567,258 @@ let rolling = false, rollT = 0, wantRoll = false;
 let nextOffset = 0, crashT = 0, overAt = 0, modalShown = false, trailT = 0, runT = 0;
 let best = 0;
 try { best = parseInt(localStorage.getItem(HS_KEY) || '0', 10) || 0; } catch (e) {}
+const BANK_KEY = 'neonRunnerBank', MIS_KEY = 'neonRunnerMissions';
+let banked = 0, missionsDone = 0;
+try { banked = parseInt(localStorage.getItem(BANK_KEY) || '0', 10) || 0; missionsDone = parseInt(localStorage.getItem(MIS_KEY) || '0', 10) || 0; } catch (e) {}
+const save = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) {} };
+let shield = false, magnetT = 0, doubleT = 0, flyT = 0, invuln = 0;
+let comboCount = 0, comboT = 0, distScore = 0, bonus = 0, level = 1, runDone = 0;
+const stats = { coins: 0, jumps: 0, rolls: 0, power: 0, dist: 0, level: 1 };
+const INV_KEY = 'neonRunnerInv', CAP_KEY = 'neonRunnerCap';
+const inv = { revive: 0, magnet: 0, shield: 0, double: 0, jet: 0, upg: 0 };
+try {
+  const raw = localStorage.getItem(INV_KEY);
+  if (raw) Object.assign(inv, JSON.parse(raw));
+  else { Object.assign(inv, { revive: 1, magnet: 1, shield: 1, double: 1, jet: 1 }); save(INV_KEY, JSON.stringify(inv)); }   // starter pack
+} catch (e) {}
+const saveInv = () => save(INV_KEY, JSON.stringify(inv));
+let capKmh = 0;
+try { capKmh = parseInt(localStorage.getItem(CAP_KEY) || '0', 10) || 0; } catch (e) {}
+const CAPS = [0, 90, 120, 160, 220, 300];
+let reviveOpen = false, reviveT = 0, reviveUsed = 0, shopOpen = false;
+const durOf = t => POWER[t].dur * (1 + 0.25 * inv.upg);
+const reviveCost = () => 150 + 100 * reviveUsed;
 
 const el = {
   hud: $('hud'), score: $('hudScore'), coins: $('hudCoins'), speed: $('hudSpeed'), bar: $('speedBar'), hudBest: $('hudBest'),
   start: $('startScreen'), startBest: $('startBest'), pause: $('pauseScreen'), over: $('overScreen'),
-  goScore: $('goScore'), goCoins: $('goCoins'), goDist: $('goDist'), goBest: $('goBest'), newBest: $('newBest')
+  goScore: $('goScore'), goCoins: $('goCoins'), goDist: $('goDist'), goBest: $('goBest'), newBest: $('newBest'),
+  missions: $('missions'), toasts: $('toasts'), combo: $('hudCombo'), level: $('hudLevel'), power: $('powerBar'),
+  startBank: $('startBank'), startMis: $('startMis'), goBank: $('goBank')
 };
-function refreshBest() { el.startBest.textContent = best; el.hudBest.textContent = best; }
+function refreshBest() {
+  el.startBest.textContent = best; el.hudBest.textContent = best;
+  el.startBank.textContent = banked; el.startMis.textContent = missionsDone;
+}
 refreshBest();
 
+function setHud(on) { el.hud.classList.toggle('hidden', !on); el.missions.classList.toggle('hidden', !on); $('hotbar').classList.toggle('hidden', !on); }
+
+function toast(text, color) {
+  const d = document.createElement('div');
+  d.className = 'toast text-sm sm:text-xl font-black tracking-widest neon-text px-4 py-1 rounded-full bg-black/40';
+  d.style.color = color || '#ffffff'; d.textContent = text;
+  el.toasts.appendChild(d);
+  while (el.toasts.children.length > 3) el.toasts.removeChild(el.toasts.firstChild);
+  setTimeout(() => d.remove(), 2300);
+}
+
+/* power-up HUD chips */
+const chips = {};
+for (const k in POWER) {
+  const d = document.createElement('div');
+  d.className = 'hidden w-9 sm:w-11 text-center';
+  d.innerHTML = '<div class="rounded-md text-[10px] sm:text-xs font-black py-0.5" style="background:' + POWER[k].color + ';color:#10052a">' + POWER[k].label +
+    '</div><div class="mt-0.5 h-1 rounded-full bg-white/15 overflow-hidden"><div class="h-full" style="background:' + POWER[k].color + ';width:100%"></div></div>';
+  el.power.appendChild(d); chips[k] = { root: d, bar: d.lastChild.firstChild };
+}
+function updatePowerHud() {
+  const vals = { magnet: magnetT / durOf('magnet'), double: doubleT / durOf('double'), jet: flyT / durOf('jet'), shield: shield ? 1 : 0 };
+  for (const k in chips) {
+    const v = vals[k]; chips[k].root.classList.toggle('hidden', v <= 0);
+    if (v > 0) chips[k].bar.style.width = (Math.min(1, v) * 100) + '%';
+  }
+}
+function activatePower(type) {
+  const p = POWER[type];
+  if (type === 'magnet') magnetT = durOf('magnet');
+  else if (type === 'double') doubleT = durOf('double');
+  else if (type === 'shield') shield = true;
+  else if (type === 'jet') { flyT = durOf('jet'); rolling = false; }
+  stats.power++; sfx.power();
+  toast(p.name + '!', p.color);
+}
+function collectCoin(c) {
+  scene.remove(c.m); coinCount += c.val || 1; stats.coins += c.val || 1;
+  comboCount++; comboT = 1.6;
+  const mult = 1 + Math.min(4, Math.floor(comboCount / 10));
+  bonus += 10 * mult * (doubleT > 0 ? 2 : 1);
+  sfx.coin(); emit(c.x, c.y, 0, 0xffd400, 8, 3, 3, 2);
+  el.coins.textContent = coinCount; el.coins.classList.remove('bump'); void el.coins.offsetWidth; el.coins.classList.add('bump');
+}
+function hitObstacle(o) {
+  if (invuln > 0 || flyT > 0) return;
+  if (shield) {
+    shield = false; invuln = 1.3; shake = 0.35; sfx.shieldHit();
+    emit(px, 1, 0, 0x00e5ff, 22, 7, 6, 3);
+    scene.remove(o.g); const k = obstacles.indexOf(o); if (k >= 0) obstacles.splice(k, 1);
+    toast('SHIELD BROKE', '#00e5ff');
+    return;
+  }
+  crash();
+}
+
+/* missions */
+const MISSION_POOL = [
+  { stat: 'coins', text: n => 'Collect ' + n + ' coins', base: 15, step: 10 },
+  { stat: 'jumps', text: n => 'Jump ' + n + ' times', base: 6, step: 4 },
+  { stat: 'rolls', text: n => 'Roll ' + n + ' times', base: 6, step: 4 },
+  { stat: 'power', text: n => 'Grab ' + n + ' power-ups', base: 1, step: 1 },
+  { stat: 'dist', text: n => 'Run ' + n + ' meters', base: 400, step: 300 },
+  { stat: 'level', text: n => 'Reach speed level ' + n, base: 3, step: 2, absolute: true }
+];
+const missions = [null, null, null];
+const mEls = [0, 1, 2].map(() => {
+  const d = document.createElement('div');
+  d.className = 'rounded-lg bg-black/45 border border-white/10 px-2.5 py-1.5 backdrop-blur-sm';
+  d.innerHTML = '<div class="flex justify-between gap-2 text-[10px] sm:text-xs"><span class="m-text truncate"></span><span class="m-count text-cyan-300 font-bold"></span></div>' +
+    '<div class="mt-1 h-1 rounded-full bg-white/15 overflow-hidden"><div class="m-bar h-full bg-gradient-to-r from-cyan-400 to-fuchsia-500" style="width:0%"></div></div>';
+  el.missions.appendChild(d);
+  return { root: d, text: d.querySelector('.m-text'), count: d.querySelector('.m-count'), bar: d.querySelector('.m-bar') };
+});
+function newMission(slot) {
+  const used = missions.filter(Boolean).map(m => m.def);
+  const def = pick(MISSION_POOL.filter(d => !used.includes(d)));
+  const tier = runDone + Math.floor(missionsDone / 6);
+  let target = def.base + def.step * Math.min(tier, 10);
+  if (def.absolute) target = Math.max(target, stats.level + 2);
+  missions[slot] = { def, target, start: def.absolute ? 0 : stats[def.stat], shown: -1 };
+  mEls[slot].text.textContent = def.text(target);
+}
+function missionProgress(m) { return m.def.absolute ? stats[m.def.stat] : stats[m.def.stat] - m.start; }
+function checkMissions() {
+  for (let i = 0; i < 3; i++) {
+    const m = missions[i]; if (!m) continue;
+    const p = Math.min(m.target, Math.floor(missionProgress(m)));
+    if (p !== m.shown) { m.shown = p; mEls[i].count.textContent = p + '/' + m.target; mEls[i].bar.style.width = (p / m.target * 100) + '%'; }
+    if (p >= m.target) {
+      bonus += 500; runDone++; missionsDone++; save(MIS_KEY, missionsDone);
+      toast('MISSION COMPLETE  +500', '#ffe14d'); sfx.power();
+      newMission(i);
+    }
+  }
+}
+
+/* hotbar: use stored power-ups */
+const HOT = ['magnet', 'shield', 'double', 'jet'];
+const hotEls = {};
+HOT.forEach((t, i) => {
+  const b = document.createElement('button');
+  b.className = 'pointer-events-auto relative w-11 h-11 sm:w-14 sm:h-14 rounded-xl border-2 bg-black/50 backdrop-blur-sm font-black active:scale-90 transition flex flex-col items-center justify-center leading-none';
+  b.style.borderColor = POWER[t].color; b.style.color = POWER[t].color;
+  b.innerHTML = '<span class="text-sm sm:text-lg">' + POWER[t].label + '</span><span class="text-[8px] sm:text-[10px] text-white/60 mt-0.5">' + (i + 1) +
+    '</span><span class="cnt absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-white text-black text-[10px] flex items-center justify-center px-1">0</span>';
+  b.addEventListener('click', e => { e.stopPropagation(); b.blur(); useStored(t); });
+  $('hotbar').appendChild(b); hotEls[t] = b;
+});
+function updateHotbar() {
+  HOT.forEach(t => { hotEls[t].querySelector('.cnt').textContent = inv[t]; hotEls[t].style.opacity = inv[t] > 0 ? 1 : 0.4; });
+}
+function useStored(type) {
+  if (state !== 'playing') return;
+  if (inv[type] <= 0) { toast('NONE LEFT - BUY MORE IN THE SHOP', '#ff9bd0'); return; }
+  if (type === 'shield' && shield) { toast('SHIELD ALREADY ACTIVE', '#00e5ff'); return; }
+  if (type === 'jet' && flyT > 0) return;
+  inv[type]--; saveInv(); activatePower(type); updateHotbar();
+}
+
+/* shop */
+const SHOP = [
+  { id: 'revive', name: 'Revive Token', desc: 'Crash? Come back and keep running. Up to 3 per run.', cost: () => 150, color: '#ff5c8a' },
+  { id: 'shield', name: 'Shield', desc: 'Absorbs one crash. Key 2.', cost: () => 60, color: '#00e5ff' },
+  { id: 'magnet', name: 'Magnet', desc: 'Pulls coins to you. Key 1.', cost: () => 40, color: '#ff3b3b' },
+  { id: 'double', name: 'Double Score', desc: 'Twice the points for a while. Key 3.', cost: () => 50, color: '#c77dff' },
+  { id: 'jet', name: 'Jetpack', desc: 'Fly over everything and vacuum coins. Key 4.', cost: () => 90, color: '#ff8a00' },
+  { id: 'upg', name: 'Power-up Duration', desc: '+25% longer magnet, double score and jetpack.', cost: () => 200 * (inv.upg + 1), color: '#ffe14d', max: 5 }
+];
+function renderShop() {
+  $('shopBank').textContent = banked;
+  const list = $('shopList'); list.textContent = '';
+  SHOP.forEach(it => {
+    const c = it.cost(), maxed = it.max && inv[it.id] >= it.max, afford = banked >= c && !maxed;
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3 rounded-xl bg-white/5 border border-white/10 p-3';
+    row.innerHTML = '<div class="flex-1 text-left"><div class="font-black text-sm" style="color:' + it.color + '">' + it.name +
+      ' <span class="text-white/60 text-xs">' + (it.max ? 'LV ' + inv[it.id] + '/' + it.max : 'x' + inv[it.id]) + '</span></div>' +
+      '<div class="text-[11px] text-white/60">' + it.desc + '</div></div>';
+    const b = document.createElement('button');
+    b.className = 'shrink-0 min-w-[78px] font-black text-xs tracking-wider px-3 py-2 rounded-full transition ' +
+      (afford ? 'bg-yellow-300 text-black hover:scale-105 active:scale-95' : 'bg-white/10 text-white/40 cursor-not-allowed');
+    b.textContent = maxed ? 'MAX' : c + ' ●';
+    b.addEventListener('click', () => {
+      if (!afford) return;
+      banked -= c; inv[it.id]++; save(BANK_KEY, banked); saveInv(); sfx.coin(); refreshBest(); renderShop();
+    });
+    row.appendChild(b); list.appendChild(row);
+  });
+}
+function openShop() { shopOpen = true; renderShop(); $('shopScreen').classList.remove('hidden'); }
+function closeShop() { shopOpen = false; $('shopScreen').classList.add('hidden'); refreshBest(); updateHotbar(); }
+
+/* revive */
+function canRevive() { return reviveUsed < 3 && (inv.revive > 0 || banked + coinCount >= reviveCost()); }
+function openRevive() {
+  reviveOpen = true; reviveT = 6;
+  const cost = reviveCost();
+  $('reviveTokenBtn').classList.toggle('hidden', inv.revive <= 0);
+  $('reviveTokenBtn').textContent = 'USE REVIVE TOKEN (' + inv.revive + ' LEFT)';
+  $('revivePayBtn').classList.toggle('hidden', banked + coinCount < cost);
+  $('revivePayBtn').textContent = 'REVIVE FOR ' + cost + ' COINS';
+  $('reviveInfo').textContent = 'YOU HAVE ' + (banked + coinCount) + ' COINS';
+  $('reviveBar').style.width = '100%';
+  $('reviveScreen').classList.remove('hidden');
+}
+function declineRevive() {
+  if (!reviveOpen) return;
+  reviveOpen = false; $('reviveScreen').classList.add('hidden');
+  overAt = performance.now() - 500; finalizeRun();
+}
+function doRevive(pay) {
+  if (!reviveOpen) return;
+  if (pay) {
+    const cost = reviveCost(); if (banked + coinCount < cost) return;
+    const c = Math.min(coinCount, cost); coinCount -= c; banked -= cost - c;
+    save(BANK_KEY, banked); el.coins.textContent = coinCount;
+  } else {
+    if (inv.revive <= 0) return;
+    inv.revive--; saveInv();
+  }
+  reviveOpen = false; $('reviveScreen').classList.add('hidden'); reviveUsed++;
+  for (let i = obstacles.length - 1; i >= 0; i--) {          // clear the crash site
+    const o = obstacles[i], z = o.g.position.z;
+    if (z + o.d / 2 > -60 && z - o.d / 2 < 14) { scene.remove(o.g); obstacles.splice(i, 1); }
+  }
+  state = 'playing'; py = 0; vy = 0; onGround = true; rolling = false; wantRoll = false; flyT = 0;
+  speed = Math.max(BASE_SPEED, speed * 0.8); moveSpeed = speed; invuln = 2.5; shake = 0; crashT = 0;
+  emit(px, 1, 0, 0xff5c8a, 24, 7, 6, 3);
+  toast('REVIVED!', '#ff5c8a'); sfx.power(); updateHotbar();
+}
+function overAction() {
+  if (reviveOpen) doRevive(inv.revive <= 0);
+  else if (modalShown && performance.now() - overAt > 700) startGame();
+}
+
+function tickPlaying(dt) {
+  if (magnetT > 0) magnetT = Math.max(0, magnetT - dt);
+  if (doubleT > 0) doubleT = Math.max(0, doubleT - dt);
+  if (invuln > 0) invuln = Math.max(0, invuln - dt);
+  if (comboT > 0) { comboT -= dt; if (comboT <= 0) comboCount = 0; }
+  stats.dist = dist;
+  const lvl = 1 + Math.floor((speed - BASE_SPEED) / 6);
+  if (lvl > level) {
+    level = lvl; stats.level = lvl; el.level.textContent = lvl;
+    coinCount += lvl * 2; stats.coins += lvl * 2; bonus += lvl * 100; el.coins.textContent = coinCount;
+    toast('SPEED LEVEL ' + lvl + '   +' + (lvl * 2) + ' COINS', '#7df9ff');
+  }
+  const mult = 1 + Math.min(4, Math.floor(comboCount / 10));
+  if (comboCount >= 5) { el.combo.textContent = comboCount + ' CHAIN  x' + mult; el.combo.classList.remove('hidden'); }
+  else el.combo.classList.add('hidden');
+  checkMissions(); updatePowerHud();
+  shieldMesh.visible = shield; shieldMesh.material.opacity = invuln > 0 ? 0.1 : 0.22;
+}
+
 function clearWorld() {
+  pickups.forEach(p => scene.remove(p.g)); pickups.length = 0;
   obstacles.forEach(o => scene.remove(o.g)); obstacles.length = 0;
   coins.forEach(c => scene.remove(c.m)); coins.length = 0;
 }
@@ -479,9 +829,14 @@ function resetGame() {
   dist = 0; coinCount = 0; score = 0;
   lane = 1; px = tx = 0; py = vy = 0; onGround = true; rolling = false; rollT = 0; wantRoll = false;
   crashT = 0; modalShown = false; body.rotation.set(0, 0, 0);
-  let z = -55;
-  while (z > -SPAWN_Z) { const L = spawnEventAt(z); z -= L + eventGap(); }
-  nextOffset = -SPAWN_Z - z;
+  shield = false; magnetT = doubleT = flyT = invuln = 0; comboCount = 0; comboT = 0; distScore = 0; bonus = 0; level = 1; runDone = 0;
+  Object.assign(stats, { coins: 0, jumps: 0, rolls: 0, power: 0, dist: 0, level: 1 });
+  reviveOpen = false; reviveUsed = 0; $('reviveScreen').classList.add('hidden');
+  missions.fill(null); for (let i = 0; i < 3; i++) newMission(i);
+  shieldMesh.visible = false; body.visible = true; el.toasts.textContent = ''; el.level.textContent = '1'; el.combo.classList.add('hidden'); updatePowerHud(); updateHotbar();
+  let z = -30;
+  while (z > -spawnZ()) { const L = spawnEventAt(z); z -= L + eventGap(); }
+  nextOffset = -spawnZ() - z;
   el.score.textContent = '0'; el.coins.textContent = '0';
 }
 
@@ -489,7 +844,7 @@ function startGame() {
   initAudio(); resetGame();
   state = 'playing';
   el.start.classList.add('hidden'); el.over.classList.add('hidden'); el.pause.classList.add('hidden');
-  el.hud.classList.remove('hidden'); refreshBest();
+  setHud(true); refreshBest();
 }
 
 function pauseGame() { if (state === 'playing') { state = 'paused'; el.pause.classList.remove('hidden'); } }
@@ -500,12 +855,20 @@ function crash() {
   sfx.crash();
   emit(px, 1, 0, 0xff3355, 28, 8, 7, 3);
   emit(px, 1, 0, 0xffd400, 14, 6, 6, 2);
+  shield = false; shieldMesh.visible = false; flyT = 0; body.visible = true;
+  if (canRevive()) { openRevive(); return; }
+  finalizeRun();
+}
+
+function finalizeRun() {
   const final = score;
   const isBest = final > best;
   if (isBest) { best = final; try { localStorage.setItem(HS_KEY, String(best)); } catch (e) {} }
   el.goScore.textContent = final; el.goCoins.textContent = coinCount;
   el.goDist.textContent = Math.floor(dist); el.goBest.textContent = best;
   el.newBest.classList.toggle('hidden', !isBest);
+  banked += coinCount; save(BANK_KEY, banked); el.goBank.textContent = coinCount;
+  shield = false; shieldMesh.visible = false; flyT = 0; body.visible = true;
   refreshBest();
 }
 
@@ -521,11 +884,11 @@ function moveLane(d) {
 }
 function jump() {
   if (state !== 'playing') return;
-  if (onGround) { rolling = false; vy = JUMP_V; onGround = false; sfx.jump(); emit(px, 0.1, 0, 0xff2e93, 10, 3, 2, 2); }
+  if (onGround) { rolling = false; vy = JUMP_V; onGround = false; stats.jumps++; sfx.jump(); emit(px, 0.1, 0, 0xff2e93, 10, 3, 2, 2); }
 }
 function doRoll() {
   if (state !== 'playing') return;
-  if (onGround) { rolling = true; rollT = 0; sfx.roll(); }
+  if (onGround) { rolling = true; rollT = 0; stats.rolls++; sfx.roll(); }
   else { vy = -22; wantRoll = true; }
 }
 
@@ -534,24 +897,29 @@ function doRoll() {
 ============================================================ */
 window.addEventListener('keydown', e => {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+  if (shopOpen) { if (e.code === 'Escape') closeShop(); return; }
   if (e.repeat) return;
   switch (e.code) {
     case 'ArrowLeft': case 'KeyA': moveLane(-1); break;
     case 'ArrowRight': case 'KeyD': moveLane(1); break;
     case 'ArrowUp': case 'KeyW': case 'Space':
       if (state === 'menu') startGame();
-      else if (state === 'over') { if (performance.now() - overAt > 700) startGame(); }
+      else if (state === 'over') overAction();
       else if (state === 'paused') resumeGame();
       else jump();
       break;
     case 'Enter':
       if (state === 'menu') startGame();
-      else if (state === 'over') { if (performance.now() - overAt > 700) startGame(); }
+      else if (state === 'over') overAction();
       else if (state === 'paused') resumeGame();
       break;
     case 'ArrowDown': case 'KeyS': doRoll(); break;
-    case 'KeyP': case 'Escape': if (state === 'playing') pauseGame(); else if (state === 'paused') resumeGame(); break;
+    case 'KeyP': case 'Escape': if (state === 'playing') pauseGame(); else if (state === 'paused') resumeGame(); else if (reviveOpen) declineRevive(); break;
     case 'KeyM': muted = !muted; break;
+    case 'Digit1': case 'Numpad1': useStored('magnet'); break;
+    case 'Digit2': case 'Numpad2': useStored('shield'); break;
+    case 'Digit3': case 'Numpad3': useStored('double'); break;
+    case 'Digit4': case 'Numpad4': useStored('jet'); break;
   }
 });
 
@@ -587,6 +955,9 @@ function animateRunner(dt) {
     body.rotation.x = Math.min(crashT * 6, 1.5);
     body.position.y = Math.max(0.35, 0.85 - crashT * 2);
     legL.rotation.x = 0.6; legR.rotation.x = -0.4; armL.rotation.x = -2.6; armR.rotation.x = -2.2;
+  } else if (flyT > 0) {
+    body.rotation.x = -0.55; body.position.y = 0.85;
+    legL.rotation.x = 0.4; legR.rotation.x = 0.7; armL.rotation.x = -2.6; armR.rotation.x = -2.6;
   } else if (rolling) {
     body.rotation.x = -(rollT / ROLL_DUR) * Math.PI * 2;
     body.position.y = 0.75;
@@ -601,17 +972,23 @@ function animateRunner(dt) {
     armL.rotation.x = -s * 0.8; armR.rotation.x = s * 0.8;
   }
   runner.position.set(px, py, 0);
+  body.visible = !(invuln > 0 && state === 'playing') || Math.floor(performance.now() / 70) % 2 === 0;
   runner.rotation.z = clamp((px - tx) * 0.12, -0.35, 0.35);
   runner.rotation.y = clamp((px - tx) * 0.15, -0.4, 0.4);
 }
 
 function update(dt) {
+  if (state === 'over' && reviveOpen) {
+    reviveT -= dt; $('reviveBar').style.width = (Math.max(0, reviveT) / 6 * 100) + '%';
+    if (reviveT <= 0) declineRevive();
+  }
   // speed
-  if (state === 'playing') speed = Math.min(MAX_SPEED, speed + ACCEL * dt);
+  if (state === 'playing') speed = Math.min(speed + ACCEL * dt, capKmh ? capKmh / 3.6 : Infinity);
   const target = state === 'playing' ? speed : state === 'menu' ? 9 : 0;
   moveSpeed += (target - moveSpeed) * Math.min(1, dt * (state === 'over' ? 3.5 : 2.5));
   if (state === 'playing') moveSpeed = speed;
   const dz = moveSpeed * dt;
+  scene.fog.far += (clamp(spawnZ() - 8, 145, 332) - scene.fog.far) * Math.min(1, dt * 2);
 
   // world scroll
   trackTex.offset.y = (trackTex.offset.y + dz / TILE) % 1;
@@ -628,12 +1005,16 @@ function update(dt) {
   // player
   if (state === 'playing') {
     px += (tx - px) * Math.min(1, dt * 16);
-    if (!onGround) {
+    if (flyT > 0) {
+      flyT -= dt; py += (3.9 - py) * Math.min(1, dt * 5); vy = 0; onGround = false; rolling = false; wantRoll = false;
+      emit(px, py + 0.1, 0.2, Math.random() < 0.5 ? 0xff8a00 : 0xffe14d, 2, 1.2, -2, 4);
+      if (flyT <= 0) { flyT = 0; invuln = Math.max(invuln, 1.8); vy = 0; }
+    } else if (!onGround) {
       vy -= GRAVITY * dt; py += vy * dt;
       if (py <= 0) {
         py = 0; vy = 0; onGround = true;
         emit(px, 0.05, 0, 0xffffff, 8, 3, 2, 1);
-        if (wantRoll) { rolling = true; rollT = 0; wantRoll = false; sfx.roll(); }
+        if (wantRoll) { rolling = true; rollT = 0; wantRoll = false; stats.rolls++; sfx.roll(); }
       }
     }
     if (rolling) { rollT += dt; if (rollT >= ROLL_DUR) rolling = false; }
@@ -649,10 +1030,10 @@ function update(dt) {
     if (state === 'playing') {
       nextOffset -= dz;
       while (nextOffset <= 0) {
-        const L = spawnEventAt(-SPAWN_Z - nextOffset);
+        const L = spawnEventAt(-spawnZ() - nextOffset);
         nextOffset += L + eventGap();
       }
-      dist += dz;
+      dist += dz; distScore += dz * (doubleT > 0 ? 2 : 1);
     }
     const ph = rolling ? ROLL_H : STAND_H;
 
@@ -661,33 +1042,49 @@ function update(dt) {
       if (o.g.position.z - o.d / 2 > 10) { scene.remove(o.g); obstacles.splice(i, 1); continue; }
       if (state === 'playing') {
         const oz = o.g.position.z;
-        if (Math.abs(oz) < o.d / 2 + PW &&
+        if (oz >= -(o.d / 2 + PW) && oz - dz <= o.d / 2 + PW &&
             Math.abs(px - o.g.position.x) < o.w / 2 + PW - 0.05 &&
-            py + ph > o.y0 + 0.05 && py < o.y0 + o.h - 0.05) { crash(); }
+            py + ph > o.y0 + 0.05 && py < o.y0 + o.h - 0.05) { hitObstacle(o); }
       }
     }
     for (let i = coins.length - 1; i >= 0; i--) {
       const c = coins[i]; c.m.position.z += dz; c.m.rotation.y += dt * 4;
-      if (c.m.position.z > 8) { scene.remove(c.m); coins.splice(i, 1); continue; }
-      if (state === 'playing' && Math.abs(c.x - px) < 0.75 && Math.abs(c.m.position.z) < 0.8 && Math.abs(c.y - (py + ph / 2)) < 0.8) {
-        scene.remove(c.m); coins.splice(i, 1); coinCount++; sfx.coin();
-        emit(c.x, c.y, 0, 0xffd400, 8, 3, 3, 2);
-        el.coins.textContent = coinCount; el.coins.classList.remove('bump'); void el.coins.offsetWidth; el.coins.classList.add('bump');
+      const cz = c.m.position.z;
+      if (cz > 8) { scene.remove(c.m); coins.splice(i, 1); continue; }
+      if (state === 'playing' && magnetT > 0 && cz > -18 && cz < 3) {
+        const k = Math.min(1, dt * 9);
+        c.x += (px - c.x) * k; c.y += (py + ph / 2 - c.y) * k; c.m.position.x = c.x; c.m.position.y = c.y;
+      }
+      if (state === 'playing' && cz >= -0.8 && cz - dz <= 0.8 && Math.abs(c.x - px) < (flyT > 0 ? 1.3 : 0.75) &&
+          (flyT > 0 || Math.abs(c.y - (py + ph / 2)) < 0.8)) {
+        collectCoin(c); coins.splice(i, 1);
+      }
+    }
+    for (let i = pickups.length - 1; i >= 0; i--) {
+      const p = pickups[i]; p.g.position.z += dz; p.g.rotation.y += dt * 2.5;
+      p.g.position.y = p.y + Math.sin(performance.now() / 300 + p.ph) * 0.12;
+      const pz = p.g.position.z;
+      if (pz > 8) { scene.remove(p.g); pickups.splice(i, 1); continue; }
+      if (state === 'playing' && pz >= -1 && pz - dz <= 1 && Math.abs(p.x - px) < 1.0 &&
+          (flyT > 0 || Math.abs(p.y - (py + ph / 2)) < 1.4)) {
+        scene.remove(p.g); pickups.splice(i, 1);
+        activatePower(p.type); emit(p.x, p.y, 0, POWER[p.type].hex, 16, 5, 5, 2);
       }
     }
   }
 
   // HUD
   if (state === 'playing') {
-    score = Math.floor(dist) + coinCount * 10;
+    tickPlaying(dt);
+    score = Math.floor(distScore) + bonus;
     el.score.textContent = score;
     el.speed.textContent = Math.round(speed * 3.6);
-    el.bar.style.width = (clamp((speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED), 0, 1) * 100) + '%';
+    el.bar.style.width = (100 * (1 - Math.exp(-(speed - BASE_SPEED) / 70))) + '%';
   }
 
   // game-over modal
-  if (state === 'over' && !modalShown && performance.now() - overAt > 900) {
-    modalShown = true; el.over.classList.remove('hidden'); el.hud.classList.add('hidden');
+  if (state === 'over' && !modalShown && !reviveOpen && performance.now() - overAt > 900) {
+    modalShown = true; el.over.classList.remove('hidden'); setHud(false);
   }
 
   // particles
@@ -716,7 +1113,7 @@ function updateCamera(dt) {
   camera.lookAt(px * 0.7, 1.3, -8);
   camRoll += (-(tx - px) * 0.05 - camRoll) * Math.min(1, dt * 8);
   camera.rotateZ(camRoll);
-  const fov = baseFov + clamp((moveSpeed - BASE_SPEED) * 0.2, 0, 7);
+  const fov = baseFov + 14 * (1 - Math.exp(-Math.max(0, moveSpeed - BASE_SPEED) / 45));
   if (Math.abs(fov - camera.fov) > 0.01) { camera.fov = fov; camera.updateProjectionMatrix(); }
   camera.position.x -= sxo; camera.position.y -= syo;
 }
@@ -729,6 +1126,21 @@ function tick(now) {
   updateCamera(state === 'paused' ? 0.0001 : dt);
   renderer.render(scene, camera);
 }
+
+document.querySelectorAll('.nostart').forEach(n => n.addEventListener('click', e => e.stopPropagation()));
+document.querySelectorAll('.capSel').forEach(sel => {
+  CAPS.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v ? v + ' km/h' : 'UNLIMITED ∞'; sel.appendChild(o); });
+  sel.value = String(capKmh);
+  sel.addEventListener('change', () => {
+    capKmh = parseInt(sel.value, 10) || 0; save(CAP_KEY, capKmh);
+    document.querySelectorAll('.capSel').forEach(x => x.value = String(capKmh)); sel.blur();
+  });
+});
+document.querySelectorAll('.shopBtn').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); b.blur(); openShop(); }));
+$('shopClose').addEventListener('click', closeShop);
+$('reviveTokenBtn').addEventListener('click', () => doRevive(false));
+$('revivePayBtn').addEventListener('click', () => doRevive(true));
+$('reviveNoBtn').addEventListener('click', declineRevive);
 
 resetGame();
 state = 'menu';
