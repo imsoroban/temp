@@ -1141,7 +1141,272 @@ $('shopClose').addEventListener('click', closeShop);
 $('reviveTokenBtn').addEventListener('click', () => doRevive(false));
 $('revivePayBtn').addEventListener('click', () => doRevive(true));
 $('reviveNoBtn').addEventListener('click', declineRevive);
+/* ===== ADD-ON: WORLDS · MUSIC · ROGUE MODE · PERMANENT UPGRADES · MAIN MENU =====
+   Paste just above the final `resetGame();` line (inside the IIFE). */
 
+/* ---------- SAVE DATA (localStorage, key neonRunnerMeta2) ---------- */
+const META_KEY = 'neonRunnerMeta2';
+const meta = { up: {}, rogue: false, world: 0, auto: true, music: true, vol: 0.6 };
+try { const r = JSON.parse(localStorage.getItem(META_KEY) || 'null'); if (r) Object.assign(meta, r); } catch (e) {}
+meta.up = Object.assign({ coin: 0, score: 0, armor: 0, life: 0, burn: 0, choice: 0 }, meta.up || {});
+const saveMeta = () => save(META_KEY, JSON.stringify(meta));
+
+/* ---------- WORLDS ---------- */
+const WORLDS = [
+  { n: 'NEON CITY',    col: '#ff2e93', fog: 0x1d0b3b, tint: 0xffffff, gnd: 0x090415, amb: 0x8a6bff, bpm: 118, root: 55,    sc: [0,3,5,7,10,12], prog: [0,0,-4,-2], w: 'sawtooth' },
+  { n: 'SOLAR FORGE',  col: '#ff8a00', fog: 0x3a0d06, tint: 0xff9a5a, gnd: 0x1a0603, amb: 0xff7a3d, bpm: 128, root: 49,    sc: [0,1,5,7,8,12],  prog: [0,-2,-4,-5], w: 'square' },
+  { n: 'CRYO GRID',    col: '#7df9ff', fog: 0x08243a, tint: 0x7de0ff, gnd: 0x03101c, amb: 0x5ab8ff, bpm: 110, root: 58.27, sc: [0,2,3,7,9,12],  prog: [0,-3,-5,-7], w: 'triangle' },
+  { n: 'TOXIC JUNGLE', col: '#5dff8a', fog: 0x0a2812, tint: 0x8dff9a, gnd: 0x030f06, amb: 0x4dff8a, bpm: 138, root: 51.9,  sc: [0,2,4,7,9,11],  prog: [0,5,3,-2],   w: 'sawtooth' }
+];
+const WORLD_LEN = 1500;                       // metres per world when cycling
+let curW = -1;
+const bg = new THREE.Color(0x1d0b3b); scene.background = bg;
+const amb = scene.children.find(o => o.isAmbientLight);
+const tgt = { fog: new THREE.Color(), tint: new THREE.Color(), gnd: new THREE.Color(), amb: new THREE.Color() };
+function blend(k) {
+  bg.lerp(tgt.fog, k); scene.fog.color.copy(bg);
+  ground.material.color.lerp(tgt.gnd, k); track.material.color.lerp(tgt.tint, k);
+  buildings.forEach(b => b.material.color.lerp(tgt.tint, k));
+  if (amb) amb.color.lerp(tgt.amb, k);
+}
+function setWorld(i, snap) {
+  if (i === curW && !snap) return;
+  const W = WORLDS[i]; curW = i;
+  tgt.fog.set(W.fog); tgt.tint.set(W.tint); tgt.gnd.set(W.gnd); tgt.amb.set(W.amb);
+  if (snap) blend(1);
+  else if (state === 'playing') toast('WORLD ' + (i + 1) + ' · ' + W.n, W.col);
+}
+
+/* ---------- MUSIC (procedural, shifts with world + speed level) ---------- */
+let mG = null, mNext = 0, mStep = 0;
+function mTone(f, t, d, type, v) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(mG); o.start(t); o.stop(t + d + 0.05);
+}
+function mKick(t) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.14);
+  g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+  o.connect(g); g.connect(mG); o.start(t); o.stop(t + 0.2);
+}
+function music() {
+  if (!actx || muted || !meta.music || !(state === 'menu' || state === 'playing' || pickOpen)) { mNext = 0; return; }
+  if (!mG) { mG = actx.createGain(); mG.gain.value = meta.vol; mG.connect(actx.destination); }
+  const W = WORLDS[curW < 0 ? 0 : curW], t0 = actx.currentTime;
+  if (!mNext || mNext < t0 - 0.3) mNext = t0 + 0.05;
+  const menu = state === 'menu', bpm = W.bpm + (menu ? -10 : Math.min(36, (level - 1) * 3)), spb = 15 / bpm;
+  while (mNext < t0 + 0.12) {
+    const s = mStep % 16, bar = Math.floor(mStep / 16) % 4, r = W.root * Math.pow(2, W.prog[bar] / 12), t = mNext;
+    if (!menu && s % 4 === 0) mKick(t);
+    if (!menu && s % 2 === 1) mTone(9000, t, 0.03, 'square', 0.012);
+    if (s % 8 === 0 || s === 6 || s === 14) mTone(r, t, spb * 3, W.w, 0.1);
+    if (s % 2 === 0) mTone(r * 4 * Math.pow(2, W.sc[(s / 2 + bar * 2) % W.sc.length] / 12), t, spb * 1.6, 'square', 0.03);
+    if (s === 0) mTone(r * 2 * Math.pow(2, W.sc[2] / 12), t, spb * 15, 'triangle', 0.05);
+    mNext += spb; mStep++;
+  }
+}
+const unlockAudio = () => { initAudio(); window.removeEventListener('pointerdown', unlockAudio); window.removeEventListener('keydown', unlockAudio); };
+window.addEventListener('pointerdown', unlockAudio); window.addEventListener('keydown', unlockAudio);
+
+/* ---------- PERMANENT UPGRADES ---------- */
+const UPS = [
+  { id: 'coin',   n: 'Coin Value',        d: '+10% coins per level',            max: 10, cost: l => 60 + 50 * l,  c: '#ffd400' },
+  { id: 'score',  n: 'Score Boost',       d: '+8% distance score per level',    max: 10, cost: l => 80 + 70 * l,  c: '#ff2e93' },
+  { id: 'armor',  n: 'Head-Start Shield', d: 'Begin every run with a shield',   max: 1,  cost: () => 300,         c: '#00e5ff' },
+  { id: 'life',   n: 'Extra Life',        d: 'Survive +1 crash per run, per level', max: 2, cost: l => 600 * (l + 1), c: '#ff5c8a' },
+  { id: 'burn',   n: 'Slow Burn',         d: 'Speed climbs 8% slower per level', max: 5, cost: l => 150 + 120 * l, c: '#7df9ff' },
+  { id: 'choice', n: 'Wider Choice',      d: '+1 option in rogue-like picks',   max: 2,  cost: l => 500 * (l + 1), c: '#c77dff' }
+];
+
+/* ---------- ROGUE-LIKE ABILITIES (per run, every 10,000 points) ---------- */
+const ABIL = [
+  { id: 'rush',   n: 'Coin Rush',      d: '+100% coins from pickups',   c: '#ffd400' },
+  { id: 'surge',  n: 'Score Surge',    d: '+30% distance score',        c: '#ff2e93' },
+  { id: 'aegis',  n: 'Aegis',          d: 'A shield regrows every ~20s', c: '#00e5ff' },
+  { id: 'mag',    n: 'Gravity Core',   d: 'Permanent coin magnet',      c: '#ff3b3b', max: 1 },
+  { id: 'cruise', n: 'Cruise Control', d: 'Speed climbs slower',        c: '#7df9ff' },
+  { id: 'life',   n: 'Second Wind',    d: 'Survive one more crash',     c: '#ff5c8a' },
+  { id: 'jet',    n: 'Jet Pilot',      d: 'Auto jetpack every ~35s',    c: '#ff8a00' }
+];
+let ab = {}, lives = 0, picks = 0, nextPick = 10000, pickOpen = false, pickBtns = [];
+let lastCoins = 0, lastDist = 0, cfrac = 0, aegisT = 0, jetT = 0, prevState = 'menu', lt = performance.now(), hudT = 0;
+
+function newRun() {
+  ab = {}; ABIL.forEach(a => ab[a.id] = 0);
+  lives = meta.up.life; picks = 0; nextPick = 10000;
+  lastCoins = 0; lastDist = 0; cfrac = 0; aegisT = 20; jetT = 30;
+  if (meta.up.armor) shield = true;
+}
+newRun();
+
+// extra lives: intercept crash()
+const _crash = crash;
+crash = function () {
+  if (lives > 0) {
+    lives--; invuln = 2.5; shake = 0.6; sfx.shieldHit(); emit(px, 1, 0, 0xff5c8a, 24, 7, 6, 3);
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i], z = o.g.position.z;
+      if (z + o.d / 2 > -40 && z - o.d / 2 < 12) { scene.remove(o.g); obstacles.splice(i, 1); }
+    }
+    toast('EXTRA LIFE USED · ' + lives + ' LEFT', '#ff5c8a');
+    return;
+  }
+  _crash();
+};
+
+/* pick overlay */
+const pk = document.createElement('div');
+pk.className = 'hidden fixed inset-0 z-[30] flex items-center justify-center bg-black/70 backdrop-blur-sm px-3';
+pk.innerHTML = '<div class="pop w-full max-w-md text-center"><div class="text-[11px] tracking-[0.4em] text-fuchsia-300">SCORE MILESTONE</div>' +
+  '<h2 class="mt-1 text-3xl sm:text-4xl font-black italic text-cyan-300 neon-text">CHOOSE AN ABILITY</h2><div id="pkL" class="mt-5 space-y-2"></div>' +
+  '<p class="mt-3 text-[10px] text-white/50 tracking-widest">CLICK OR PRESS 1-<span id="pkN">3</span></p></div>';
+document.body.appendChild(pk);
+function openPick() {
+  const pool = ABIL.filter(a => ab[a.id] < (a.max || 4)).sort(() => Math.random() - 0.5).slice(0, 3 + meta.up.choice);
+  nextPick += 10000; picks++;
+  if (!pool.length) return;
+  pickOpen = true; state = 'paused'; pickBtns = [];
+  const L = $('pkL'); L.textContent = ''; $('pkN').textContent = pool.length;
+  pool.forEach((a, i) => {
+    const b = document.createElement('button');
+    b.className = 'w-full text-left rounded-xl bg-white/5 border-2 px-4 py-3 hover:bg-white/15 active:scale-95 transition';
+    b.style.borderColor = a.c;
+    b.innerHTML = '<div class="font-black text-sm" style="color:' + a.c + '">[' + (i + 1) + '] ' + a.n + ' <span class="text-white/60 text-xs">LV ' + ab[a.id] + ' → ' + (ab[a.id] + 1) + '</span></div><div class="text-[11px] text-white/70">' + a.d + '</div>';
+    b.addEventListener('click', e => {
+      e.stopPropagation(); ab[a.id]++;
+      if (a.id === 'life') lives++;
+      if (a.id === 'aegis') shield = true;
+      pickOpen = false; pk.classList.add('hidden'); state = 'playing'; sfx.power(); toast(a.n.toUpperCase() + ' LV ' + ab[a.id], a.c);
+    });
+    L.appendChild(b); pickBtns.push(b);
+  });
+  pk.classList.remove('hidden');
+}
+window.addEventListener('keydown', e => {          // capture: block game keys while choosing
+  if (!pickOpen) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  const i = parseInt(e.key, 10) - 1; if (pickBtns[i]) pickBtns[i].click();
+}, true);
+
+/* ---------- MAIN MENU ---------- */
+const btn = (t, c, f) => { const b = document.createElement('button'); b.className = c; b.textContent = t; b.addEventListener('click', e => { e.stopPropagation(); b.blur(); f(); }); return b; };
+const mm = document.createElement('div');
+mm.className = 'fixed inset-0 z-20 overflow-y-auto flex justify-center px-4 py-4 bg-gradient-to-b from-black/60 via-fuchsia-950/30 to-black/70 text-center';
+mm.innerHTML = '<div class="max-w-md w-full my-auto pop"><p class="text-cyan-300 tracking-[0.5em] text-[10px] sm:text-sm neon-text">MAIN MENU</p>' +
+  '<h1 class="mt-2 text-6xl sm:text-7xl font-black italic leading-[0.9]"><span class="text-fuchsia-400 neon-text">NEON</span><br><span class="text-cyan-300 neon-text">RUNNER</span></h1>' +
+  '<div id="mmTabs" class="mt-6 flex justify-center gap-2"></div><div id="mmBody" class="mt-5"></div>' +
+  '<p class="mt-5 text-[11px] tracking-[0.2em] text-yellow-300/80">BANKED <b id="mmBank" class="text-white">0</b> COINS &middot; BEST <b id="mmBest" class="text-white">0</b></p></div>';
+document.body.appendChild(mm); el.start.classList.add('hidden');
+let tab = 'play';
+const pill = 'w-full py-2 rounded-xl text-[11px] font-black tracking-wider border border-white/25 bg-white/5 hover:bg-white/15 active:scale-95 transition';
+
+function renderMenu() {
+  $('mmBank').textContent = banked; $('mmBest').textContent = best;
+  const tabs = $('mmTabs'); tabs.textContent = '';
+  [['play', 'PLAY'], ['up', 'UPGRADES']].forEach(([k, t]) => tabs.appendChild(btn(t, 'px-6 py-1.5 rounded-full text-xs font-black tracking-widest border ' + (tab === k ? 'bg-cyan-400 text-black border-cyan-300' : 'border-white/30 text-white/70'), () => { tab = k; renderMenu(); })));
+  const b = $('mmBody'); b.textContent = '';
+  const g = c => { const d = document.createElement('div'); d.className = c; b.appendChild(d); return d; };
+  if (tab === 'play') {
+    g('').appendChild(btn('PLAY', 'bg-gradient-to-r from-fuchsia-500 to-cyan-400 text-black font-black text-2xl tracking-widest px-16 py-4 rounded-full shadow-[0_0_35px_rgba(255,46,147,.7)] hover:scale-105 active:scale-95 transition', startGame));
+    g('mt-2 text-[10px] text-white/50 tracking-widest').textContent = 'SPACE / ENTER TO START';
+    g('mt-5').appendChild(btn('MODE: ' + (meta.rogue ? 'ROGUE-LIKE · ABILITY EVERY 10K' : 'ARCADE'), pill + (meta.rogue ? ' !border-fuchsia-400 !text-fuchsia-300' : ''), () => { meta.rogue = !meta.rogue; saveMeta(); renderMenu(); }));
+    g('mt-4 text-[10px] tracking-[0.3em] text-white/50').textContent = 'START WORLD';
+    const Wg = g('mt-2 grid grid-cols-2 gap-2');
+    WORLDS.forEach((W, i) => {
+      const x = btn(W.n, pill, () => { meta.world = i; saveMeta(); setWorld(i); renderMenu(); });
+      x.style.borderColor = W.col; x.style.color = W.col; if (meta.world === i) x.style.background = W.col + '44';
+      Wg.appendChild(x);
+    });
+    const T = g('mt-3 grid grid-cols-2 gap-2');
+    T.appendChild(btn('WORLD CYCLE: ' + (meta.auto ? 'ON' : 'OFF'), pill, () => { meta.auto = !meta.auto; saveMeta(); renderMenu(); }));
+    T.appendChild(btn('MUSIC: ' + (meta.music ? 'ON' : 'OFF'), pill, () => { meta.music = !meta.music; saveMeta(); renderMenu(); }));
+    const V = g('mt-3 flex items-center justify-center gap-3 text-[10px] tracking-widest text-cyan-300/90');
+    V.innerHTML = 'VOLUME <input type="range" min="0" max="1" step="0.05" class="w-40">';
+    const rg = V.querySelector('input'); rg.value = meta.vol;
+    rg.addEventListener('input', () => { meta.vol = +rg.value; if (mG) mG.gain.value = meta.vol; });
+    rg.addEventListener('change', saveMeta);
+    g('mt-4').appendChild(btn('SHOP', 'bg-yellow-300 text-black font-black text-xs tracking-widest px-6 py-2 rounded-full hover:scale-105 active:scale-95 transition', openShop));
+    g('mt-4 text-[10px] text-white/40 tracking-widest').textContent = 'A/D LANE · SPACE JUMP · S ROLL · 1-4 POWER-UPS · P PAUSE · M MUTE';
+  } else {
+    g('text-[11px] text-white/50').textContent = 'Permanent upgrades are bought with banked coins and apply to every run.';
+    const list = g('mt-3 space-y-2');
+    UPS.forEach(u => {
+      const lv = meta.up[u.id], maxed = lv >= u.max, c = u.cost(lv), ok = !maxed && banked >= c;
+      const row = document.createElement('div'); row.className = 'flex items-center gap-3 rounded-xl bg-white/5 border border-white/10 p-3';
+      row.innerHTML = '<div class="flex-1 text-left"><div class="font-black text-sm" style="color:' + u.c + '">' + u.n + ' <span class="text-white/60 text-xs">LV ' + lv + '/' + u.max + '</span></div><div class="text-[11px] text-white/60">' + u.d + '</div></div>';
+      row.appendChild(btn(maxed ? 'MAX' : c + ' ●', 'shrink-0 min-w-[78px] font-black text-xs tracking-wider px-3 py-2 rounded-full transition ' + (ok ? 'bg-yellow-300 text-black hover:scale-105 active:scale-95' : 'bg-white/10 text-white/40 cursor-not-allowed'), () => {
+        if (!ok) return; banked -= c; meta.up[u.id]++; save(BANK_KEY, banked); saveMeta(); sfx.coin(); refreshBest(); renderMenu();
+      }));
+      list.appendChild(row);
+    });
+  }
+}
+
+function goMenu() {
+  if (state === 'paused' && dist > 0) {            // bank an abandoned run
+    banked += coinCount; save(BANK_KEY, banked);
+    if (score > best) { best = score; try { localStorage.setItem(HS_KEY, String(best)); } catch (e) {} }
+  }
+  el.over.classList.add('hidden'); el.pause.classList.add('hidden'); pk.classList.add('hidden'); pickOpen = false;
+  resetGame(); clearWorld(); state = 'menu'; setHud(false); refreshBest(); tab = 'play'; renderMenu();
+}
+$('againBtn').after(btn('MAIN MENU', 'mt-2 w-full text-white/70 border border-white/20 text-xs tracking-widest py-2 rounded-full hover:bg-white/10', goMenu));
+$('resumeBtn').after(btn('MAIN MENU', 'block mx-auto mt-3 text-white/70 border border-white/20 text-xs tracking-widest px-6 py-2 rounded-full hover:bg-white/10', goMenu));
+
+/* in-run add-on HUD */
+const ah = document.createElement('div');
+ah.className = 'hidden fixed top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none text-center text-[10px] sm:text-xs tracking-widest font-bold max-w-[40vw]';
+document.body.appendChild(ah);
+
+/* ---------- PER-FRAME LOGIC ---------- */
+function runLogic(dt) {
+  const dc = coinCount - lastCoins;
+  if (dc > 0) {
+    cfrac += dc * (0.1 * meta.up.coin + ab.rush);
+    const n = Math.floor(cfrac);
+    if (n) { cfrac -= n; coinCount += n; stats.coins += n; el.coins.textContent = coinCount; }
+  }
+  lastCoins = coinCount;
+  const dd = distScore - lastDist; lastDist = distScore;
+  if (dd > 0) bonus += dd * (0.08 * meta.up.score + 0.3 * ab.surge);
+  const slow = 0.08 * meta.up.burn + 0.15 * ab.cruise;
+  if (slow > 0) speed = Math.max(BASE_SPEED, speed - ACCEL * dt * Math.min(0.9, slow));
+  if (ab.mag) magnetT = durOf('magnet');
+  if (ab.aegis && (aegisT -= dt) <= 0) { aegisT = Math.max(10, 26 - 4 * ab.aegis); if (!shield) { shield = true; toast('AEGIS SHIELD', '#00e5ff'); } }
+  if (ab.jet && (jetT -= dt) <= 0) { jetT = Math.max(15, 42 - 6 * ab.jet); if (flyT <= 0) activatePower('jet'); }
+  if (meta.rogue && score >= nextPick) openPick();
+}
+
+function addonTick(now) {
+  requestAnimationFrame(addonTick);
+  const dt = Math.min(0.05, (now - lt) / 1000); lt = now;
+  if (state === 'playing' && prevState !== 'playing' && dist < 2) newRun();
+  prevState = state;
+  setWorld(meta.auto && state !== 'menu' ? (meta.world + Math.floor(dist / WORLD_LEN)) % WORLDS.length : meta.world);
+  blend(Math.min(1, dt * 1.5));
+  mm.classList.toggle('hidden', state !== 'menu');
+  if (state === 'playing') runLogic(dt);
+  music();
+  hudT -= dt;
+  if (hudT <= 0) {
+    hudT = 0.25;
+    if (state === 'menu') $('mmBank').textContent = banked;
+    const on = state === 'playing' || state === 'paused';
+    ah.classList.toggle('hidden', !on);
+    if (on) {
+      const W = WORLDS[curW];
+      ah.innerHTML = '<span style="color:' + W.col + '">' + W.n + '</span> · <span class="text-pink-300">♥ ' + lives + '</span>' +
+        (meta.rogue ? '<div class="text-fuchsia-300 mt-0.5">NEXT PICK ' + nextPick + '</div><div class="mt-0.5">' +
+          ABIL.filter(a => ab[a.id]).map(a => '<span style="color:' + a.c + '">' + a.n + ' ' + ab[a.id] + '</span>').join(' · ') + '</div>' : '');
+    }
+  }
+}
+setWorld(meta.world, true);
+renderMenu();
+requestAnimationFrame(addonTick);
+/* ===== END ADD-ON ===== */
 resetGame();
 state = 'menu';
 // in the menu the world is empty so the idle track looks clean
